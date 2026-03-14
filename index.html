@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Appointment Chatbot</title>
+
+<style>
+body{
+font-family:Segoe UI;
+background:#f0f8ff;
+display:flex;
+justify-content:center;
+align-items:center;
+height:100vh;
+margin:0;
+}
+
+.chat-container{
+width:350px;
+background:white;
+border-radius:15px;
+box-shadow:0 8px 20px rgba(0,0,0,0.2);
+display:flex;
+flex-direction:column;
+overflow:hidden;
+}
+
+.chat-box{
+flex:1;
+padding:15px;
+overflow-y:auto;
+display:flex;
+flex-direction:column;
+gap:10px;
+}
+
+.message{
+max-width:80%;
+padding:10px;
+border-radius:10px;
+}
+
+.user{
+background:#a0e7e5;
+align-self:flex-end;
+}
+
+.bot{
+background:#ffb3c1;
+align-self:flex-start;
+}
+
+.input-area{
+display:flex;
+padding:10px;
+gap:10px;
+background:#f0f8ff;
+}
+
+input{
+flex:1;
+padding:10px;
+border-radius:10px;
+border:none;
+}
+
+button{
+padding:10px;
+border-radius:10px;
+border:none;
+background:#ff6f91;
+color:white;
+cursor:pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div class="chat-container">
+
+<div class="chat-box" id="chatBox">
+
+<div class="message bot">
+Hello! Choose an option:<br><br>
+1️⃣ Book Appointment<br>
+2️⃣ Owner Dashboard
+</div>
+
+</div>
+
+<div class="input-area">
+<input id="userInput" placeholder="Type here">
+<button onclick="sendMessage()">Send</button>
+</div>
+
+</div>
+
+<script>
+
+let step="menu"
+
+let appointment={name:"",day:"",time:""}
+
+let days=["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"]
+
+let times=["8 a.m.","9 a.m.","10 a.m.","11 a.m.","12 p.m.","1 p.m.","2 p.m.","3 p.m.","4 p.m.","5 p.m."]
+
+let bookings=JSON.parse(localStorage.getItem("appointments"))||{}
+
+function saveBookings(){
+localStorage.setItem("appointments",JSON.stringify(bookings))
+}
+
+function addMessage(text,sender="bot"){
+const chatBox=document.getElementById("chatBox")
+const msg=document.createElement("div")
+msg.className="message "+sender
+msg.innerHTML=text
+chatBox.appendChild(msg)
+chatBox.scrollTop=chatBox.scrollHeight
+}
+
+function sendMessage(){
+
+const input=document.getElementById("userInput")
+let text=input.value.trim()
+
+if(!text)return
+
+addMessage(text,"user")
+input.value=""
+
+botResponse(text)
+
+}
+
+function botResponse(text){
+
+let input=text.toLowerCase()
+
+if(step==="menu"){
+
+if(input==="1"){
+
+step="name"
+addMessage("Enter your name")
+
+}
+
+else if(input==="2"){
+
+step="password"
+addMessage("Enter owner password")
+
+}
+
+else{
+
+addMessage("Invalid option")
+
+}
+
+}
+
+else if(step==="password"){
+
+if(text==="12345"){
+
+step="owner"
+
+addMessage(`
+Owner Dashboard<br><br>
+1️⃣ View appointments<br>
+2️⃣ Remove appointment<br>
+3️⃣ Edit days or times
+`)
+
+}
+
+else{
+
+addMessage("Wrong password")
+
+step="menu"
+
+}
+
+}
+
+else if(step==="owner"){
+
+if(input==="1"){
+
+if(Object.keys(bookings).length===0){
+
+addMessage("No appointments")
+
+}
+
+else{
+
+for(let d in bookings){
+
+for(let t in bookings[d]){
+
+addMessage(bookings[d][t]+" - "+d+" "+t)
+
+}
+
+}
+
+}
+
+}
+
+else if(input==="2"){
+
+step="remove"
+addMessage("Enter name to remove")
+
+}
+
+else if(input==="3"){
+
+step="edit"
+addMessage("Type: add day, remove day, add time, remove time")
+
+}
+
+}
+
+else if(step==="remove"){
+
+let found=false
+
+for(let d in bookings){
+
+for(let t in bookings[d]){
+
+if(bookings[d][t]===text){
+
+delete bookings[d][t]
+found=true
+
+}
+
+}
+
+}
+
+saveBookings()
+
+if(found){
+
+addMessage("Appointment removed")
+
+}
+
+else{
+
+addMessage("Name not found")
+
+}
+
+step="owner"
+
+}
+
+else if(step==="edit"){
+
+let words=text.toLowerCase().split(" ")
+
+if(words[0]==="add" && words[1]==="day"){
+
+days.push(words[2])
+
+addMessage("Day added")
+
+}
+
+else if(words[0]==="remove" && words[1]==="day"){
+
+days=days.filter(d=>d.toLowerCase()!==words[2])
+
+addMessage("Day removed")
+
+}
+
+else if(words[0]==="add" && words[1]==="time"){
+
+times.push(words.slice(2).join(" "))
+
+addMessage("Time added")
+
+}
+
+else if(words[0]==="remove" && words[1]==="time"){
+
+times=times.filter(t=>t.toLowerCase()!==words.slice(2).join(" "))
+
+addMessage("Time removed")
+
+}
+
+}
+
+else if(step==="name"){
+
+appointment.name=text
+step="day"
+
+addMessage("Choose day: "+days.join(", "))
+
+}
+
+else if(step==="day"){
+
+let foundDay=days.find(d=>d.toLowerCase()===input)
+
+if(foundDay){
+
+appointment.day=foundDay
+step="time"
+
+addMessage("Choose time: "+times.join(", "))
+
+}
+
+else{
+
+addMessage("Invalid day")
+
+}
+
+}
+
+else if(step==="time"){
+
+let foundTime=times.find(t=>t.toLowerCase()===input)
+
+if(foundTime){
+
+appointment.time=foundTime
+
+addMessage(`
+Confirm appointment<br><br>
+<input type="checkbox" id="confirm">
+${appointment.day} ${appointment.time}<br><br>
+<button onclick="confirm()">Confirm</button>
+`)
+
+step="confirm"
+
+}
+
+else{
+
+addMessage("Invalid time")
+
+}
+
+}
+
+}
+
+function confirm(){
+
+let check=document.getElementById("confirm")
+
+if(!check.checked){
+
+addMessage("Please confirm first")
+
+return
+
+}
+
+if(!bookings[appointment.day]){
+
+bookings[appointment.day]={}
+
+}
+
+bookings[appointment.day][appointment.time]=appointment.name
+
+saveBookings()
+
+addMessage("✅ Appointment booked")
+
+step="menu"
+
+}
+
+</script>
+
+</body>
+</html>
